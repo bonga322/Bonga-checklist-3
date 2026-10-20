@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonga — Daily Checklist</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #FAF7F2; --brown-dark: #2C1A0E; --brown-mid: #6B3F1F; --brown-light: #C8956A;
+    --green-dark: #1A3D2B; --green-mid: #2E6B4F; --green-light: #D4EDDF;
+    --amber-dark: #7A4A00; --amber-mid: #C47D00; --amber-light: #FDF0D0;
+    --card-bg: #FFFFFF; --border: rgba(44,26,14,0.1);
+    --text-main: #2C1A0E; --text-muted: #7A5C44; --text-hint: #A88B78;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--cream); color: var(--text-main); min-height: 100vh; padding-bottom: 4rem; }
+  header { background: var(--brown-dark); padding: 1.4rem 1.25rem 0; text-align: center; }
+  .logo-ring { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--brown-light); margin-bottom: 8px; }
+  .logo-ring svg { width: 22px; height: 22px; stroke: var(--brown-dark); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  header h1 { font-size: 22px; font-weight: 700; color: var(--cream); letter-spacing: 0.05em; margin-bottom: 2px; }
+  .date-line { font-size: 12px; color: var(--brown-light); margin-bottom: 1.1rem; }
+  .tabs { display: flex; background: rgba(0,0,0,0.25); }
+  .tab-btn { flex: 1; padding: 11px 6px; font-size: 13px; font-weight: 500; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; color: rgba(250,247,242,0.5); transition: all 0.2s; border-bottom: 3px solid transparent; -webkit-tap-highlight-color: transparent; }
+  .tab-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .tab-btn.t-open.active  { color: var(--brown-light); border-bottom-color: var(--brown-light); }
+  .tab-btn.t-mid.active   { color: #F5CC6A; border-bottom-color: #F5CC6A; }
+  .tab-btn.t-close.active { color: var(--green-light); border-bottom-color: var(--green-light); }
+  .container { padding: 0 1rem; max-width: 600px; margin: 0 auto; }
+  .name-bar { margin: 1.1rem 0 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 11px; padding: 0.8rem 1rem; display: flex; align-items: center; gap: 10px; }
+  .name-bar svg { width: 17px; height: 17px; stroke: var(--text-hint); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .name-bar input { flex: 1; border: none; background: transparent; font-size: 14px; color: var(--text-main); font-family: inherit; outline: none; }
+  .name-bar input::placeholder { color: var(--text-hint); }
+  .greeting { border-radius: 12px; padding: 1rem 1.1rem; margin: 1rem 0 1.1rem; display: flex; align-items: flex-start; gap: 11px; }
+  .greeting.open-g  { background: #FDF3E8; border: 1px solid #E8C898; }
+  .greeting.mid-g   { background: var(--amber-light); border: 1px solid #E8D898; }
+  .greeting.close-g { background: var(--green-light); border: 1px solid #A8D4BC; }
+  .greeting-icon { font-size: 22px; flex-shrink: 0; line-height: 1.2; }
+  .greeting-text h2 { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .greeting.open-g  .greeting-text h2 { color: var(--brown-dark); }
+  .greeting.mid-g   .greeting-text h2 { color: var(--amber-dark); }
+  .greeting.close-g .greeting-text h2 { color: var(--green-dark); }
+  .greeting-text p { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+  .prog-area { margin-bottom: 1.2rem; }
+  .prog-bg { height: 7px; border-radius: 99px; background: rgba(44,26,14,0.1); overflow: hidden; margin-bottom: 6px; }
+  .prog-fill { height: 100%; border-radius: 99px; transition: width 0.35s ease; }
+  .open-fill  { background: var(--brown-light); }
+  .mid-fill   { background: var(--amber-mid); }
+  .close-fill { background: var(--green-mid); }
+  .prog-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+  .section-lbl { display: flex; align-items: center; gap: 8px; margin: 1.3rem 0 0.55rem; font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-hint); }
+  .section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .task-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 11px; padding: 0.8rem 0.95rem; margin-bottom: 7px; display: flex; align-items: flex-start; gap: 11px; cursor: pointer; transition: opacity 0.2s, transform 0.1s; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .task-card:active { transform: scale(0.985); }
+  .task-card.done { opacity: 0.4; }
+  .chk { width: 23px; height: 23px; border-radius: 50%; border: 1.5px solid #C8B4A4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.18s; background: transparent; }
+  .chk svg { width: 12px; height: 12px; stroke: white; stroke-width: 2.8; fill: none; display: none; stroke-linecap: round; stroke-linejoin: round; }
+  .chk.open-chk  { background: var(--brown-mid); border-color: var(--brown-mid); }
+  .chk.mid-chk   { background: var(--amber-mid); border-color: var(--amber-mid); }
+  .chk.close-chk { background: var(--green-mid); border-color: var(--green-mid); }
+  .chk.open-chk svg, .chk.mid-chk svg, .chk.close-chk svg { display: block; }
+  .task-body { flex: 1; min-width: 0; }
+  .task-name { font-size: 14.5px; line-height: 1.35; color: var(--text-main); }
+  .task-card.done .task-name { text-decoration: line-through; color: var(--text-hint); }
+  .task-tip { font-size: 11.5px; color: var(--text-hint); margin-top: 3px; line-height: 1.45; font-style: italic; }
+  .input-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+  .input-row label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .input-row input { font-size: 13px; width: 160px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--cream); color: var(--text-main); font-family: inherit; outline: none; }
+  .submit-btn { width: 100%; margin-top: 1.25rem; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.2s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
+  .submit-btn:active { transform: scale(0.98); }
+  .open-btn  { background: var(--brown-dark); color: var(--cream); }
+  .mid-btn   { background: var(--amber-dark); color: #FFF8E8; }
+  .close-btn { background: var(--green-dark); color: #D4EDDF; }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .done-panel { display: none; text-align: center; padding: 2rem 1.5rem; border-radius: 13px; margin-top: 1rem; }
+  .done-panel.open-d  { background: #FDF3E8; border: 1px solid #E8C898; }
+  .done-panel.mid-d   { background: var(--amber-light); border: 1px solid #E8D898; }
+  .done-panel.close-d { background: var(--green-light); border: 1px solid #A8D4BC; }
+  .done-panel.show { display: block; }
+  .done-emoji { font-size: 34px; margin-bottom: 9px; }
+  .done-panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 5px; }
+  .done-panel.open-d  h3 { color: var(--brown-dark); }
+  .done-panel.mid-d   h3 { color: var(--amber-dark); }
+  .done-panel.close-d h3 { color: var(--green-dark); }
+  .done-panel p { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
+  .reset-link { font-size: 13px; color: var(--text-hint); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; }
+  .tasks-wrap.faded { opacity: 0.3; pointer-events: none; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--brown-dark); color: var(--cream); padding: 10px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; pointer-events: none; white-space: nowrap; z-index: 999; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: #7A1A1A; }
+  #tab-mid, #tab-close { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-ring">
+    <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+  </div>
+  <h1>Bonga</h1>
+  <div class="date-line" id="date-line"></div>
+  <div class="tabs">
+    <button class="tab-btn t-open active" id="btn-open" onclick="switchTab('open')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      Opening
+    </button>
+    <button class="tab-btn t-mid" id="btn-mid" onclick="switchTab('mid')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      Midday
+    </button>
+    <button class="tab-btn t-close" id="btn-close" onclick="switchTab('close')">
+      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      Closing
+    </button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- OPENING -->
+  <div id="tab-open">
+    <div class="name-bar">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input type="text" id="name-open" placeholder="Your name" autocomplete="off">
+    </div>
+    <div class="greeting open-g">
+      <div class="greeting-icon">☀️</div>
+      <div class="greeting-text">
+        <h2>Good morning, Bonga team!</h2>
+        <p>Work through this in order and you'll be ready to open in no time. You've got this.</p>
+      </div>
+    </div>
+    <div class="prog-area">
+      <div class="prog-bg"><div class="prog-fill open-fill" id="prog-open" style="width:0%"></div></div>
+      <div class="prog-meta"><span id="lbl-open">0 of 0 done</span><span id="pct-open">0%</span></div>
+    </div>
+    <div class="tasks-wrap" id="tasks-open"></div>
+    <div class="done-panel open-d" id="done-open">
+      <div class="done-emoji">🎉</div>
+      <h3>Bonga is open for business!</h3>
+      <p>Every single thing is done. Now go make some brilliant coffee and have a great shift.</p>
+      <button class="reset-link" onclick="resetTab('open')">Reset for next time</button>
+    </div>
+    <button class="submit-btn open-btn" id="submit-open" onclick="submitChecklist('open')" disabled>Complete &amp; save opening ✓</button>
+  </div>
+
+  <!-- MIDDAY -->
+  <div id="tab-mid">
+    <div class="name-bar">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input type="text" id="name-mid" placeholder="Your name" autocomplete="off">
+    </div>
+    <div class="greeting mid-g">
+      <div class="greeting-icon">🌤️</div>
+      <div class="greeting-text">
+        <h2>Midday check-in — keep it going!</h2>
+        <p>A quick reset at the halfway point keeps things running smoothly all afternoon.</p>
+      </div>
+    </div>
+    <div class="prog-area">
+      <div class="prog-bg"><div class="prog-fill mid-fill" id="prog-mid" style="width:0%"></div></div>
+      <div class="prog-meta"><span id="lbl-mid">0 of 0 done</span><span id="pct-mid">0%</span></div>
+    </div>
+    <div class="tasks-wrap" id="tasks-mid"></div>
+    <div class="done-panel mid-d" id="done-mid">
+      <div class="done-emoji">⭐</div>
+      <h3>Midday checks done — keep it up!</h3>
+      <p>Bonga is looking great. Enjoy the afternoon!</p>
+      <button class="reset-link" onclick="resetTab('mid')">Reset for next time</button>
+    </div>
+    <button class="submit-btn mid-btn" id="submit-mid" onclick="submitChecklist('mid')" disabled>Complete &amp; save midday ✓</button>
+  </div>
+
+  <!-- CLOSING -->
+  <div id="tab-close">
+    <div class="name-bar">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input type="text" id="name-close" placeholder="Your name" autocomplete="off">
+    </div>
+    <div class="greeting close-g">
+      <div class="greeting-icon">🌙</div>
+      <div class="greeting-text">
+        <h2>Nearly home time!</h2>
+        <p>Let's leave Bonga spotless for the morning team. They'll thank you for it.</p>
+      </div>
+    </div>
+    <div class="prog-area">
+      <div class="prog-bg"><div class="prog-fill close-fill" id="prog-close" style="width:0%"></div></div>
+      <div class="prog-meta"><span id="lbl-close">0 of 0 done</span><span id="pct-close">0%</span></div>
+    </div>
+    <div class="tasks-wrap" id="tasks-close"></div>
+    <div class="done-panel close-d" id="done-close">
+      <div class="done-emoji">🌟</div>
+      <h3>Amazing work today!</h3>
+      <p>Bonga is all locked up and ready for tomorrow. Go rest — you've earned it.</p>
+      <button class="reset-link" onclick="resetTab('close')">Reset for next time</button>
+    </div>
+    <button class="submit-btn close-btn" id="submit-close" onclick="submitChecklist('close')" disabled>Complete &amp; save closing ✓</button>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var SHEET_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+
+var allSections = {
+  open: [
+    { label: 'Walk in & set up', tasks: [
+      { text: 'Turn on lights, music & AC', tip: 'Set the vibe before anyone else arrives.' },
+      { text: 'Check yesterday\'s notes', tip: 'The closing team may have left something important. Quick read!' },
+      { text: 'Wash hands & put on your apron', tip: 'Looking the part starts the shift right.' },
+      { text: 'Switch on all equipment — toaster, oven, etc.', tip: 'Give everything time to warm up before the rush.' }
+    ]},
+    { label: 'Food & fridge', tasks: [
+      { text: 'Check fridge temperature & record it', tip: 'Should be between 1 and 4 degrees.', inputId: 'fridge-temp-open', inputLabel: 'Fridge temp (C):', inputPlaceholder: 'e.g. 3' },
+      { text: 'Take out frozen pastries & leave to come to room temp', tip: 'Do this early — they need time. Set them on the rack now.' }
+    ]},
+    { label: 'Coffee station', tasks: [
+      { text: 'Run a shot through both group heads — twice each', tip: 'Flushes out cleaning chemical from last night. Do not skip this!' },
+      { text: 'Check grind size & dial in the coffee', tip: 'Taste the shot yourself. You are the first quality check of the day.' },
+      { text: 'Stock the fridge — milk, oat, soy & all alternatives', tip: 'Check everything is in and within date.' },
+      { text: 'Stock up the cup station', tip: 'All sizes, lids, sleeves & stirrers — top everything up.' },
+      { text: 'Fill the hopper if it is running low', tip: 'Do not risk running dry mid-morning rush!' },
+      { text: 'Brew the iced tea', tip: 'Brew it now — it gets better the longer it sits.' }
+    ]},
+    { label: 'Display', tasks: [
+      { text: 'Fill the food display — make it full & beautiful', tip: 'Customers eat with their eyes. Make every shelf look abundant. No gaps!' }
+    ]},
+    { label: 'Final checks before opening', tasks: [
+      { text: 'Check seating area — clean, tidy & chairs set out', tip: 'Walk the floor like a customer. Would you be happy to sit here?' },
+      { text: 'Check toilets — clean, stocked & smelling fresh', tip: 'A quick check now saves an awkward moment later.' },
+      { text: 'Open the side shutters', tip: 'Almost there!' },
+      { text: 'Unlock the door & flip the sign — Bonga is open!', tip: 'Deep breath. Big smile. Let\'s go!' }
+    ]}
+  ],
+  mid: [
+    { label: 'Fridge & temperature', tasks: [
+      { text: 'Check fridge temperature & record it', tip: 'Should be between 1 and 4 degrees.', inputId: 'fridge-temp-mid', inputLabel: 'Fridge temp (C):', inputPlaceholder: 'e.g. 3' },
+      { text: 'Restock fridge — milks & all alternatives', tip: 'Check all milks, oat, soy, almond — top up anything getting low.' }
+    ]},
+    { label: 'Display & stock check', tasks: [
+      { text: 'Top up the food display — no gaps!', tip: 'Bring stock from the back. Make it look full and fresh.' },
+      { text: 'Remove & label any items nearing end of life', tip: 'Date and store correctly. Never leave unlabelled food out.' },
+      { text: 'Restock napkins, sugar & condiments on tables', tip: '' }
+    ]},
+    { label: 'Order list — what do we need?', tasks: [
+      { text: 'Cakes & pastries', tip: 'How many do we need for tomorrow?', inputId: 'order-cakes', inputLabel: 'Notes:', inputPlaceholder: 'e.g. need more croissants' },
+      { text: 'Produce & fresh items', tip: '', inputId: 'order-produce', inputLabel: 'Notes:', inputPlaceholder: 'e.g. bananas, avocado' },
+      { text: 'Milks & alternatives', tip: '', inputId: 'order-milks', inputLabel: 'Notes:', inputPlaceholder: 'e.g. oat milk running low' },
+      { text: 'Cups, lids & sleeves', tip: '', inputId: 'order-cups', inputLabel: 'Notes:', inputPlaceholder: 'e.g. medium lids needed' },
+      { text: 'Chai', tip: '', inputId: 'order-chai', inputLabel: 'Notes:', inputPlaceholder: 'e.g. 2 bags' },
+      { text: 'Hot chocolate', tip: '', inputId: 'order-hotchoc', inputLabel: 'Notes:', inputPlaceholder: 'e.g. getting low' },
+      { text: 'Matcha', tip: '', inputId: 'order-matcha', inputLabel: 'Notes:', inputPlaceholder: 'e.g. order 1 tin' },
+      { text: 'Ice', tip: '', inputId: 'order-ice', inputLabel: 'Notes:', inputPlaceholder: 'e.g. need a bag' },
+      { text: 'Tea & herbal teas', tip: '', inputId: 'order-tea', inputLabel: 'Notes:', inputPlaceholder: 'e.g. peppermint nearly out' },
+      { text: 'Coffee beans', tip: '', inputId: 'order-coffee', inputLabel: 'Notes:', inputPlaceholder: 'e.g. order 2kg' },
+      { text: 'Cleaning supplies', tip: '', inputId: 'order-cleaning', inputLabel: 'Notes:', inputPlaceholder: 'e.g. need more surface spray' },
+      { text: 'Anything else to order?', tip: 'Anything not on the list above.', inputId: 'order-other', inputLabel: 'Notes:', inputPlaceholder: 'e.g. extra straws' }
+    ]},
+    { label: 'Bathroom & front of house', tasks: [
+      { text: 'Check toilets — clean, stocked with loo roll & soap', tip: 'A quick check now keeps customers happy all afternoon.' },
+      { text: 'Clear & wipe any used tables', tip: '' },
+      { text: 'Check bin levels — empty if getting full', tip: 'Do not wait until it is overflowing!' }
+    ]}
+  ],
+  close: [
+    { label: 'Fridge & temperature', tasks: [
+      { text: 'Check fridge temperature & record it', tip: 'Should be between 1 and 4 degrees. Essential for food hygiene records.', inputId: 'fridge-temp-close', inputLabel: 'Fridge temp (C):', inputPlaceholder: 'e.g. 3' }
+    ]},
+    { label: 'Restocking for tomorrow', tasks: [
+      { text: 'Restock front fridge with all milks & alternatives', tip: 'Opening team should find a full fridge — check dates too.' },
+      { text: 'Refill the hopper with coffee', tip: 'Top it right up so the morning team can go straight into dialling in.' },
+      { text: 'Refill the cup station — all sizes, lids & sleeves', tip: '' },
+      { text: 'Restock sugars & condiments', tip: 'Check sweeteners, stirrers and any syrups too.' },
+      { text: 'Restock the drinks fridge', tip: 'Cans, bottles, cold brew — make sure it looks full for tomorrow.' }
+    ]},
+    { label: 'Coffee station', tasks: [
+      { text: 'Backflush & clean the espresso machine', tip: '5 minutes now saves a messy morning. Non-negotiable!' },
+      { text: 'Empty & rinse all milk jugs & steam pitchers', tip: 'Rinse with hot water and leave upside down to dry.' },
+      { text: 'Clean the grinder & wipe down the coffee station', tip: 'Remove any grounds buildup — leave it spotless for the opener.' },
+      { text: 'Clean & purge the steam wands', tip: 'Wipe with a damp cloth and purge after. Milk residue blocks them overnight.' },
+      { text: 'Empty the knock box & wipe it down', tip: 'Give it a rinse too — it gets smelly fast.' },
+      { text: 'Wipe down the group heads & drip trays', tip: '' },
+      { text: 'Turn off the espresso machine', tip: 'Last thing at the coffee station.' }
+    ]},
+    { label: 'Kitchen & equipment', tasks: [
+      { text: 'Clean the display fridge — take everything out, wipe down, restock', tip: 'Give the shelves a proper wipe. Put everything back neatly and labelled.' },
+      { text: 'Clean the back fridge — wipe shelves & check for out of date items', tip: 'Anything past its date goes in the bin. No exceptions.' },
+      { text: 'Clean the dishwasher — wipe the seal & empty the filter', tip: 'A dirty dishwasher means dirty cups. Check the filter every single close.' },
+      { text: 'Run a final dishwasher load & empty it', tip: 'Opening team should never arrive to dirty dishes.' },
+      { text: 'Clean the toaster — empty the crumb tray', tip: 'A full crumb tray is a fire hazard. Empty it every close.' },
+      { text: 'Wipe down the oven & toaster exterior', tip: '' },
+      { text: 'Clean & sanitise all food prep surfaces', tip: 'Use food-safe sanitiser — not just a wipe down.' },
+      { text: 'Wash up any remaining crockery, cups & utensils', tip: 'Nothing should be left dirty overnight.' },
+      { text: 'Check all plugs & equipment are switched off', tip: 'Toaster, oven, blender, water boiler — walk the whole kitchen.' }
+    ]},
+    { label: 'Front of house & cleaning', tasks: [
+      { text: 'Wipe down all tables, chairs & surfaces', tip: 'Use sanitiser spray — not just a dry cloth.' },
+      { text: 'Clean the glass door — inside & out', tip: 'Fingerprints and smudges show up overnight. Leave it gleaming.' },
+      { text: 'Wipe down windowsills & ledges', tip: 'Dust and crumbs collect here quickly.' },
+      { text: 'Clean the menu boards & any signage', tip: 'Wipe chalk boards, remove any old specials.' },
+      { text: 'Hoover the floor', tip: 'Get into the corners and under furniture.' },
+      { text: 'Mop the floor', tip: 'Your morning self will seriously thank you.' }
+    ]},
+    { label: 'Toilets & bins', tasks: [
+      { text: 'Clean the toilets thoroughly', tip: 'Bowl, seat, sink, mirror and floor.' },
+      { text: 'Restock the toilets — loo roll, soap & paper towels', tip: 'Nothing worse than opening to find empty toilets.' },
+      { text: 'Take out all bins & replace bags', tip: 'Check every bin — kitchen, front of house & toilets.' },
+      { text: 'Clean the bin area & wipe down bin lids', tip: 'Bin areas get sticky and smelly fast.' }
+    ]},
+    { label: 'Food & waste', tasks: [
+      { text: 'Store all leftover food correctly & label with today\'s date', tip: 'If in doubt, throw it out. Never risk it.' },
+      { text: 'Record food waste for the day', tip: 'Helps spot patterns and reduce waste over time.' },
+      { text: 'Check all allergen info is up to date & displayed', tip: 'This is a legal requirement — do not skip it.' },
+      { text: 'Do the closing sheets & record the day', tip: 'Fridge temps, incidents, wastage — fill it all in accurately.' }
+    ]},
+    { label: 'Lock down', tasks: [
+      { text: 'Close the till & record the day\'s takings', tip: 'Count it twice. Note any discrepancies and flag them.' },
+      { text: 'Leave a note for the morning team if needed', tip: 'Low on anything? Any issues today? Be specific — it helps them a lot.' },
+      { text: 'Close the AC', tip: 'Do not leave it running overnight!' },
+      { text: 'Close the shutter', tip: '' },
+      { text: 'Check all windows are closed & locked', tip: '' },
+      { text: 'Turn off the lights & radio', tip: 'Do a final walk through every room before you leave.' },
+      { text: 'Check the back door is locked', tip: 'Easy to forget — always double check.' },
+      { text: 'Set the alarm & lock the front door — amazing shift, Bonga team!', tip: 'You\'ve earned the rest. See you tomorrow!' }
+    ]}
+  ]
+};
+
+var state = { open: {}, mid: {}, close: {} };
+var inputValues = {};
+var now = new Date();
+document.getElementById('date-line').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+function buildSections(tab) {
+  var wrap = document.getElementById('tasks-' + tab);
+  wrap.innerHTML = '';
+  var idx = 0;
+  var sections = allSections[tab];
+  for (var s = 0; s < sections.length; s++) {
+    var section = sections[s];
+    var lbl = document.createElement('div');
+    lbl.className = 'section-lbl';
+    lbl.textContent = section.label;
+    wrap.appendChild(lbl);
+    for (var t = 0; t < section.tasks.length; t++) {
+      var task = section.tasks[t];
+      var i = idx++;
+      if (!(i in state[tab])) state[tab][i] = false;
+      var card = document.createElement('div');
+      card.className = 'task-card' + (state[tab][i] ? ' done' : '');
+      card.id = tab + '-card-' + i;
+      card.setAttribute('data-tab', tab);
+      card.setAttribute('data-idx', i);
+      card.addEventListener('click', makeToggleHandler(tab, i));
+
+      var chk = document.createElement('div');
+      chk.className = 'chk' + (state[tab][i] ? ' ' + tab + '-chk' : '');
+      chk.id = tab + '-chk-' + i;
+      var chkSvg = document.createElement('svg');
+      chkSvg.setAttribute('viewBox', '0 0 12 10');
+      var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      poly.setAttribute('points', '1,5 4,8.5 11,1');
+      chkSvg.appendChild(poly);
+      chk.appendChild(chkSvg);
+
+      var body = document.createElement('div');
+      body.className = 'task-body';
+
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'task-name';
+      nameDiv.textContent = task.text;
+      body.appendChild(nameDiv);
+
+      if (task.tip) {
+        var tipDiv = document.createElement('div');
+        tipDiv.className = 'task-tip';
+        tipDiv.textContent = task.tip;
+        body.appendChild(tipDiv);
+      }
+
+      if (task.inputId) {
+        var row = document.createElement('div');
+        row.className = 'input-row';
+        row.addEventListener('click', function(e) { e.stopPropagation(); });
+        var lbl2 = document.createElement('label');
+        lbl2.setAttribute('for', task.inputId);
+        lbl2.textContent = task.inputLabel;
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = task.inputId;
+        inp.placeholder = task.inputPlaceholder || '';
+        inp.setAttribute('data-key', task.inputId);
+        inp.addEventListener('input', makeInputHandler(task.inputId));
+        row.appendChild(lbl2);
+        row.appendChild(inp);
+        body.appendChild(row);
+      }
+
+      card.appendChild(chk);
+      card.appendChild(body);
+      wrap.appendChild(card);
+    }
+  }
+  updateProgress(tab);
+}
+
+function makeToggleHandler(tab, i) {
+  return function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') return;
+    toggle(tab, i);
+  };
+}
+
+function makeInputHandler(key) {
+  return function() { inputValues[key] = this.value; };
+}
+
+function toggle(tab, i) {
+  state[tab][i] = !state[tab][i];
+  document.getElementById(tab + '-card-' + i).classList.toggle('done', state[tab][i]);
+  var chk = document.getElementById(tab + '-chk-' + i);
+  chk.classList.remove('open-chk', 'mid-chk', 'close-chk');
+  if (state[tab][i]) chk.classList.add(tab + '-chk');
+  updateProgress(tab);
+}
+
+function updateProgress(tab) {
+  var keys = Object.keys(state[tab]);
+  var total = keys.length;
+  var done = 0;
+  for (var k = 0; k < keys.length; k++) { if (state[tab][keys[k]]) done++; }
+  var pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('prog-' + tab).style.width = pct + '%';
+  document.getElementById('lbl-' + tab).textContent = done + ' of ' + total + ' done';
+  document.getElementById('pct-' + tab).textContent = pct + '%';
+  document.getElementById('submit-' + tab).disabled = !(done === total && total > 0);
+}
+
+function submitChecklist(tab) {
+  var nameEl = document.getElementById('name-' + tab);
+  var name = nameEl.value.trim();
+  if (!name) { showToast('Please enter your name first!', true); nameEl.focus(); return; }
+  var btn = document.getElementById('submit-' + tab);
+  btn.innerHTML = '<span class="spinner"></span>Saving...';
+  btn.disabled = true;
+  var tabLabel = tab === 'open' ? 'Opening' : tab === 'mid' ? 'Midday' : 'Closing';
+  var fridgeTemp = inputValues['fridge-temp-' + tab] || '';
+  var orderNotes = '';
+  if (tab === 'mid') {
+    var items = ['cakes','produce','milks','cups','chai','hotchoc','matcha','ice','tea','coffee','cleaning','other'];
+    var parts = [];
+    for (var i = 0; i < items.length; i++) {
+      var v = inputValues['order-' + items[i]];
+      if (v) parts.push(items[i] + ': ' + v);
+    }
+    orderNotes = parts.join(' | ');
+  }
+  var keys = Object.keys(state[tab]);
+  var done = 0;
+  for (var k = 0; k < keys.length; k++) { if (state[tab][keys[k]]) done++; }
+  var payload = {
+    tab: tabLabel,
+    date: now.toLocaleDateString('en-GB'),
+    time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+    staff: name,
+    tasks_done: done,
+    tasks_total: keys.length,
+    fridge_temp: fridgeTemp,
+    order_notes: orderNotes
+  };
+
+  if (SHEET_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+    setTimeout(function() {
+      showToast('Demo mode — add your Sheet URL to save for real!');
+      onSuccess(tab, true);
+    }, 800);
+    return;
+  }
+
+  fetch(SHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) })
+    .then(function() { onSuccess(tab, false); })
+    .catch(function() {
+      btn.textContent = 'Complete & save ' + tabLabel.toLowerCase() + ' ✓';
+      btn.disabled = false;
+      showToast('Could not save — check your connection.', true);
+    });
+}
+
+function onSuccess(tab, demo) {
+  document.getElementById('done-' + tab).classList.add('show');
+  document.getElementById('tasks-' + tab).classList.add('faded');
+  document.getElementById('submit-' + tab).style.display = 'none';
+  showToast(demo ? 'All done! Connect Sheets to save records.' : 'Saved to Google Sheets!');
+}
+
+function resetTab(tab) {
+  var keys = Object.keys(state[tab]);
+  for (var k = 0; k < keys.length; k++) state[tab][keys[k]] = false;
+  document.getElementById('done-' + tab).classList.remove('show');
+  document.getElementById('tasks-' + tab).classList.remove('faded');
+  var btn = document.getElementById('submit-' + tab);
+  btn.style.display = '';
+  btn.disabled = true;
+  var tabLabel = tab === 'open' ? 'opening' : tab === 'mid' ? 'midday' : 'closing';
+  btn.textContent = 'Complete & save ' + tabLabel + ' ✓';
+  buildSections(tab);
+}
+
+function switchTab(tab) {
+  var tabs = ['open', 'mid', 'close'];
+  for (var i = 0; i < tabs.length; i++) {
+    document.getElementById('tab-' + tabs[i]).style.display = tabs[i] === tab ? '' : 'none';
+    document.getElementById('btn-' + tabs[i]).classList.toggle('active', tabs[i] === tab);
+  }
+}
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function() { t.className = 'toast'; }, 3200);
+}
+
+buildSections('open');
+buildSections('mid');
+buildSections('close');
+</script>
+</body>
+</html>
